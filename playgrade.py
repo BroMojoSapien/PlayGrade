@@ -3,6 +3,18 @@ from tkinter import messagebox
 import json
 import os
 
+def get_letter_grade(score):
+    if score >= 9:
+    	return "A"
+    elif score >= 8:
+    	return "B"
+    elif score >= 7:
+    	return "C"
+    elif score >= 6:
+    	return "D"
+    else:
+    	return "F"
+
 print("WORKING FOLDER:", os.getcwd())
 
 FILE_NAME = "playgrade_reviews.json"
@@ -43,9 +55,9 @@ def add_review():
         "safety": safety,
         "cleanliness": cleanliness,
         "shade": shade,
-	"seating": seating,
-	"bathrooms": bathrooms,
-	"parking": parking,
+    "seating": seating,
+    "bathrooms": bathrooms,
+    "parking": parking,
         "comment": comment,
         "would_return": would_return
     }
