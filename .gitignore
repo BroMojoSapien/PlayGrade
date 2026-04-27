@@ -1,0 +1,7 @@
+.cache/
+.config/
+.local/
+.profile
+.sudo_as_admin_successful
+*.save
+

@@ -1,0 +1,24 @@
+[
+    {
+        "name": "Barry Township Park",
+        "town": "Delton, MI",
+        "fun": "7",
+        "safety": "8",
+        "cleanliness": "8",
+        "comment": "A wonderful spot to have a picnic or play some pickleball. The kids love the merry-go-round! In the summer during the weekends, there is always something going on in the park.",
+        "would_return": "Yes"
+    },
+    {
+        "name": "Tangle Town",
+        "town": "Hastings, MI",
+        "fun": "80",
+        "safety": "75",
+        "cleanliness": "67",
+        "shade": "78",
+        "seating": "82",
+        "bathrooms": "75",
+        "parking": "83",
+        "comment": "All Wood Playground. A lot of fun. went here as a kid, now I take my kids there!",
+        "would_return": "Yes"
+    }
+]
