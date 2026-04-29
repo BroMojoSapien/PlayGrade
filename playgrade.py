@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import messagebox
 import sqlite3
 
+from PIL import Image, ImageTk
+
 DB_NAME = "playgrade.db"
 
 def connect_db():
@@ -95,62 +97,57 @@ def load_reviews():
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT id, name, town, fun, safety, cleanliness, shade, seating, bathrooms, parking
+    SELECT
+        name,
+        town,
+        AVG(fun),
+        AVG(safety),
+        AVG(cleanliness),
+        AVG(shade),
+        AVG(seating),
+        AVG(bathrooms),
+        AVG(parking),
+        COUNT(*)
     FROM playgrounds
+    GROUP BY name, town
     """)
     rows = cursor.fetchall()
 
     conn.close()
 
     for row in rows:
-        park_id = row[0]
-        name = row[1]
-        town = row[2]
-        fun = row[3]
-        safety = row[4]
-        cleanliness = row[5]
-        shade = row[6]
-        seating = row[7]
-        bathrooms = row[8]
-        parking = row[9]
+        name = row[0]
+        town = row[1]
+        fun = row[2]
+        safety = row[3]
+        cleanliness = row[4]
+        shade = row[5]
+        seating = row[6]
+        bathrooms = row[7]
+        parking = row[8]
+        review_count = row[9]
 
         average_score = (fun + safety + cleanliness + shade + seating + bathrooms + parking) / 7
         letter_grade = get_letter_grade(average_score)
 
         park_listbox.insert(
             tk.END,
-            f"{park_id}: {name} - {town} | {average_score:.1f}/10 | Grade: {letter_grade}"
+            f"{name} - {town} | {average_score:.1f}/10 | Grade: {letter_grade} | {review_count} reviews"
         )
 
-def show_review(event):
+def show_review():
     selected = park_listbox.curselection()
 
-    if selected:
-        selected_text = park_listbox.get(selected[0])
-        park_id = selected_text.split(":")[0]
-
-        conn = connect_db()
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT * FROM playgrounds WHERE id = ?", (park_id,))
-        review = cursor.fetchone()
-
-        conn.close()
-
+    if not  selected:
         details_text.delete("1.0", tk.END)
+        details_text.insert(tk.END, "Nothing Selected")
+        return
 
-        if review:
-            details_text.insert(tk.END, f"Park: {review[1]}\n")
-            details_text.insert(tk.END, f"Town: {review[2]}\n")
-            details_text.insert(tk.END, f"Fun: {review[3]}/10\n")
-            details_text.insert(tk.END, f"Safety: {review[4]}/10\n")
-            details_text.insert(tk.END, f"Cleanliness: {review[5]}/10\n")
-            details_text.insert(tk.END, f"Shade: {review[6]}/10\n")
-            details_text.insert(tk.END, f"Seating: {review[7]}/10\n")
-            details_text.insert(tk.END, f"Bathrooms: {review[8]}/10\n")
-            details_text.insert(tk.END, f"Parking: {review[9]}/10\n")
-            details_text.insert(tk.END, f"Would Return: {review[11]}\n\n")
-            details_text.insert(tk.END, f"Comment:\n{review[10]}")
+    selected_text = park_listbox.get(selected[0])
+
+    details_text.delete("1.0", tk.END)
+    details_text.insert(tk.END, selected_text)
+
 
 def delete_review():
     selected = park_listbox.curselection()
@@ -195,71 +192,101 @@ setup_db()
 
 root = tk.Tk()
 root.title("PlayGrade - Yelp for Playgrounds")
-root.geometry("900x800")
+root.geometry("1000x1000")
+root.configure(bg="white")
 
-title = tk.Label(root, text="PlayGrade", font=("Arial", 22, "bold"))
+canvas = tk.Canvas(root, bg="white")
+scrollbar = tk.Scrollbar(root, orient="vertical", command=canvas.yview)
+
+scrollable_frame = tk.Frame(canvas, bg="white")
+
+scrollable_frame.bind(
+    "<Configure>",
+    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+    )
+
+canvas.create_window((400, 0), window=scrollable_frame, anchor="n")
+canvas.configure(yscrollcommand=scrollbar.set)
+
+canvas.pack(side="left", fill="both", expand=True)
+canvas.configure(width=800)
+scrollbar.pack(side="right", fill="y")
+
+logo = tk.PhotoImage(file="playgrade_logo_clean.png")
+logo = logo.subsample(1, 1)
+
+logo_label = tk.Label(scrollable_frame, image=logo, bg="white")
+logo_label.image = logo
+logo_label.pack(pady=10)
+
+title = tk.Label(scrollable_frame, bg="white",  text="PlayGrade", font=("Arial", 22, "bold"))
 title.pack(pady=10)
 
-form = tk.Frame(root)
-form.pack()
+form = tk.Frame(scrollable_frame, bg="white")
+form.pack(pady=10)
 
-tk.Label(form, text="Park Name").grid(row=0, column=0, sticky="w")
+frame = tk.Frame(scrollable_frame, bg="white")
+frame.pack(pady=20)
+
+tk.Label(form, text="Park Name", bg="white").grid(row=0, column=0, sticky="w", padx=10, pady=5)
 park_name_entry = tk.Entry(form)
-park_name_entry.grid(row=0, column=1)
+park_name_entry.grid(row=0, column=1, padx=10, pady=5)
 
-tk.Label(form, text="Town").grid(row=1, column=0, sticky="w")
+tk.Label(form, text="Town", bg="white").grid(row=1, column=0, sticky="w", padx=10, pady=5)
 town_entry = tk.Entry(form)
-town_entry.grid(row=1, column=1)
+town_entry.grid(row=1, column=1, padx=10, pady=5)
 
-tk.Label(form, text="Fun (1-10)").grid(row=2, column=0, sticky="w")
+tk.Label(form, text="Fun (1-10)", bg="white").grid(row=2, column=0, sticky="w", padx=10, pady=5)
 fun_entry = tk.Entry(form)
-fun_entry.grid(row=2, column=1)
+fun_entry.grid(row=2, column=1, padx=10, pady=5)
 
-tk.Label(form, text="Safety (1-10)").grid(row=3, column=0, sticky="w")
+tk.Label(form, text="Safety (1-10)", bg="white").grid(row=3, column=0, sticky="w", padx=10, pady=5)
 safety_entry = tk.Entry(form)
-safety_entry.grid(row=3, column=1)
+safety_entry.grid(row=3, column=1, padx=10, pady=5)
 
-tk.Label(form, text="Cleanliness (1-10)").grid(row=4, column=0, sticky="w")
+tk.Label(form, text="Cleanliness (1-10)", bg="white").grid(row=4, column=0, sticky="w", padx=10, pady=5)
 cleanliness_entry = tk.Entry(form)
-cleanliness_entry.grid(row=4, column=1)
+cleanliness_entry.grid(row=4, column=1, padx=10, pady=5)
 
-tk.Label(form, text="Shade (1-10)").grid(row=5, column=0, sticky="w")
+tk.Label(form, text="Shade (1-10)", bg="white").grid(row=5, column=0, sticky="w", padx=10, pady=5)
 shade_entry = tk.Entry(form)
-shade_entry.grid(row=5, column=1)
+shade_entry.grid(row=5, column=1, padx=10, pady=5)
 
-tk.Label(form, text="Seating (1-10)").grid(row=6, column=0, sticky="w")
+tk.Label(form, text="Seating (1-10)", bg="white").grid(row=6, column=0, sticky="w", padx=10, pady=5)
 seating_entry = tk.Entry(form)
-seating_entry.grid(row=6, column=1)
+seating_entry.grid(row=6, column=1, padx=10, pady=5)
 
-tk.Label(form, text="Bathrooms (1-10)").grid(row=7, column=0, sticky="w")
+tk.Label(form, text="Bathrooms (1-10)", bg="white").grid(row=7, column=0, sticky="w", padx=10, pady=5)
 bathrooms_entry = tk.Entry(form)
-bathrooms_entry.grid(row=7, column=1)
+bathrooms_entry.grid(row=7, column=1, padx=10, pady=5)
 
-tk.Label(form, text="Parking (1-10)").grid(row=8, column=0, sticky="w")
+tk.Label(form, text="Parking (1-10)", bg="white").grid(row=8, column=0, sticky="w", padx=10, pady=5)
 parking_entry = tk.Entry(form)
-parking_entry.grid(row=8, column=1)
+parking_entry.grid(row=8, column=1, padx=10, pady=5)
 
-tk.Label(form, text="Would Return").grid(row=9, column=0, sticky="w")
+tk.Label(form, text="Would Return", bg="white").grid(row=9, column=0, sticky="w", padx=10, pady=5)
 return_var = tk.StringVar(value="Yes")
 tk.OptionMenu(form, return_var, "Yes", "No", "Maybe").grid(row=9, column=1, sticky="w")
 
-tk.Label(form, text="Comments").grid(row=10, column=0, sticky="nw")
+tk.Label(form, text="Comments", bg="white").grid(row=10, column=0, sticky="nw")
 comment_entry = tk.Text(form, height=4, width=30)
 comment_entry.grid(row=10, column=1, sticky="w")
 
-tk.Button(root, text="Add Review", command=add_review).pack(pady=5)
+tk.Button(scrollable_frame, text="Add Review", bg="white",  command=add_review).pack(pady=5)
 
-frame = tk.Frame(root)
+frame = tk.Frame(scrollable_frame, bg="white")
 frame.pack(pady=10)
 
-park_listbox = tk.Listbox(frame, width=40, height=10)
-park_listbox.grid(row=0, column=0, padx=10)
-park_listbox.bind("<<ListboxSelect>>", show_review)
+tk.Label(frame, text="Parks and Playgrounds", bg="white", font=("Arial", 14, "bold")).pack(pady=5)
+park_listbox = tk.Listbox(frame, width=80, height=4)
+park_listbox.pack(pady=10)
 
-details_text = tk.Text(frame, width=50, height=15)
-details_text.grid(row=0, column=1, padx=10)
+details_text = tk.Text(frame, width=80, height=4, wrap="word")
+details_text.pack(pady=10)
 
-tk.Button(root, text="Delete Selected", command=delete_review).pack(pady=5)
+park_listbox.bind("<<ListboxSelect>>", lambda e: show_review())
+
+tk.Button(scrollable_frame, text="Delete Selected", command=delete_review).pack(pady=5)
 
 load_reviews()
 
