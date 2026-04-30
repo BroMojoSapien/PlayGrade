@@ -90,7 +90,7 @@ def add_review():
     clear_form()
     load_reviews()
 
-def load_reviews():
+def load_reviews(search_term=""):
     park_listbox.delete(0, tk.END)
 
     conn = connect_db()
@@ -109,8 +109,10 @@ def load_reviews():
         AVG(parking),
         COUNT(*)
     FROM playgrounds
+    WHERE name LIKE ? OR town LIKE ?
     GROUP BY name, town
-    """)
+    """, (f"%{search_term}%", f"%{search_term}%"))
+    
     rows = cursor.fetchall()
 
     conn.close()
@@ -138,16 +140,74 @@ def load_reviews():
 def show_review():
     selected = park_listbox.curselection()
 
-    if not  selected:
+    if not selected:
         details_text.delete("1.0", tk.END)
         details_text.insert(tk.END, "Nothing Selected")
         return
 
     selected_text = park_listbox.get(selected[0])
 
-    details_text.delete("1.0", tk.END)
-    details_text.insert(tk.END, selected_text)
+    name_town = selected_text.split("|")[0]
+    name, town = name_town.split(" - ")
 
+    name = name.strip()
+    town = town.strip()
+
+    details_text.delete("1.0", tk.END)
+
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    # Get average info for the header
+    cursor.execute("""
+    SELECT AVG(fun), AVG(safety), AVG(cleanliness),
+           AVG(shade), AVG(seating), AVG(bathrooms), AVG(parking), COUNT(*)
+    FROM playgrounds
+    WHERE name = ? AND town = ?
+    """, (name, town))
+
+    avg_data = cursor.fetchone()
+
+    avg_score = sum(avg_data[:7]) / 7
+    review_count = avg_data[7]
+    letter = get_letter_grade(avg_score)
+
+    details_text.insert(tk.END, f"{name} - {town}\n")
+    details_text.insert(tk.END, f"Average: {avg_score:.1f}/10 | Grade: {letter} | {review_count} reviews\n")
+    details_text.insert(tk.END, "-" * 40 + "\n\n")
+
+    # Get individual reviews
+    cursor.execute("""
+    SELECT fun, safety, cleanliness, shade, seating, bathrooms, parking, comment, would_return
+    FROM playgrounds
+    WHERE name = ? AND town = ?
+    ORDER BY id DESC
+    """, (name, town))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    for i, row in enumerate(rows, start=1):
+        fun, safety, cleanliness, shade, seating, bathrooms, parking, comment, would_return = row
+
+        review_text = f"""
+Review {i}
+------------------------
+Fun: {fun}
+Safety: {safety}
+Cleanliness: {cleanliness}
+Shade: {shade}
+Seating: {seating}
+Bathrooms: {bathrooms}
+Parking: {parking}
+Would Return: {would_return}
+
+Comment:
+{comment}
+
+========================
+"""
+        details_text.insert(tk.END, review_text)
 
 def delete_review():
     selected = park_listbox.curselection()
@@ -277,6 +337,24 @@ tk.Button(scrollable_frame, text="Add Review", bg="white",  command=add_review).
 frame = tk.Frame(scrollable_frame, bg="white")
 frame.pack(pady=10)
 
+tk.Label(frame, text="Search Parks", bg="white").pack()
+search_entry = tk.Entry(frame, width=40)
+search_entry.pack(pady=5)
+
+def clear_search():
+    search_entry.delete(0, tk.END)
+    load_reviews()
+
+tk.Button(frame, text="Clear", command=clear_search).pack(pady=5)
+
+search_entry.bind("<KeyRelease>", lambda e: load_reviews(search_entry.get()))
+
+def run_search():
+    term = search_entry.get()
+    load_reviews(term)
+
+tk.Button(frame, text="Search", command=run_search).pack(pady=5)
+
 tk.Label(frame, text="Parks and Playgrounds", bg="white", font=("Arial", 14, "bold")).pack(pady=5)
 park_listbox = tk.Listbox(frame, width=80, height=4)
 park_listbox.pack(pady=10)
@@ -286,7 +364,7 @@ details_text.pack(pady=10)
 
 park_listbox.bind("<<ListboxSelect>>", lambda e: show_review())
 
-tk.Button(scrollable_frame, text="Delete Selected", command=delete_review).pack(pady=5)
+#tk.Button(scrollable_frame, text="Delete Selected", command=delete_review).pack(pady=5)
 
 load_reviews()
 
